@@ -59,7 +59,7 @@ class MedicalSequenceGenerator:
         current_status = StartStatus()
         current = TransitionModel.Group(current_status, current_event)
         while not self.model.is_stopped_status(current):
-            print(current.status.key, current.event.key)
+            # print(current.status.key, current.event.key)
             sequence.append(current.status, current.event)
             new_current = self.model.next(current)
             if new_current is None:
