@@ -1,8 +1,8 @@
 from torch.utils.data import Dataset
 import torch
 from sequence_generator import MedicalSequence
-from events import Event, PaddingEvent
-from patient_statuses import IStatus, PaddingStatus
+from structures.cabinets import Event, PaddingEvent
+from structures.patient_statuses import IStatus, PaddingStatus
 
 class MedicalSequenceDataset(Dataset):
     def __init__(self, sequences: list[MedicalSequence], max_len=None):

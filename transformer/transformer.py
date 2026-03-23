@@ -12,7 +12,7 @@ from sub_layers import (
     Embeddings,
 )
 
-
+# https://github.com/IpsumDominum/Pytorch-Simple-Transformer/blob/master
 class Encoder(nn.Module):
     def __init__(self, embed_dim, num_heads, num_blocks, CUDA=False):
         super(Encoder, self).__init__()

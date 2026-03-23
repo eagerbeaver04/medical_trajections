@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Optional
-from events import Event, EndEvent, StartEvent, CabinetEvent, key_to_event
-from patient_statuses import IStatus, StartStatus, PatientStatus, DeathStatus, SurviveStatus, key_to_status
+from structures.cabinets import Event, EndEvent, StartEvent, CabinetEvent, key_to_event
+from structures.patient_statuses import IStatus, StartStatus, PatientStatus, DeathStatus, SurviveStatus, key_to_status
 from dataclasses import dataclass
 
 class TransitionModel:
