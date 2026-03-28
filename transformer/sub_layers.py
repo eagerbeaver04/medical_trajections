@@ -9,7 +9,6 @@ Transformer Implementation By Chenrong Lu 2021
 Some Layers Refer to The Annotated Transformer (Harvard NLP)
 """
 
-
 class SelfAttention(nn.Module):
     def __init__(self, embed_dim, d_k, d_v, mask=False):
         super(SelfAttention, self).__init__()
