@@ -74,14 +74,14 @@ class SequenceGenerator():
         # Веса терминальных исходов
         # Чем больше weight для состояния, тем сильнее вклад
         # condition 0
-        relation.set_death_likelihood(0, np.array([0.05, 0.10, 0.20]))
-        relation.set_survival_likelihood(0, np.array([0.20, 0.10, 0.05]))
+        relation.set_death_likelihood(0, np.array([0.10, 0.10, 0.20]))
+        relation.set_survival_likelihood(0, np.array([0.20, 0.10, 0.12]))
 
-        relation.set_death_likelihood(1, np.array([0.05, 0.15]))
+        relation.set_death_likelihood(1, np.array([0.12, 0.15]))
         relation.set_survival_likelihood(1, np.array([0.15, 0.05]))
 
-        relation.set_death_likelihood(2, np.array([0.05, 0.08, 0.12, 0.20]))
-        relation.set_survival_likelihood(2, np.array([0.20, 0.12, 0.08, 0.05]))
+        relation.set_death_likelihood(2, np.array([0.10, 0.12, 0.12, 0.20]))
+        relation.set_survival_likelihood(2, np.array([0.20, 0.12, 0.08, 0.10]))
 
         self._relation: Relation = relation
         self._schema: PatientConditionSchema = schema
@@ -124,3 +124,7 @@ class SequenceGenerator():
             current = next_condition
 
         return sequence, PatientTerminalStatus.IN_PROGRESS
+    
+    @property
+    def schema(self) -> PatientConditionSchema:
+        return self._schema

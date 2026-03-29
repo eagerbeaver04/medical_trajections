@@ -30,8 +30,8 @@ class MedicalSequence:
     def get_condition_array(self) -> npt.NDArray[np.object_]:
         return np.array(self._conditions_sequence, dtype=object)
 
-    def __len__(self) -> int:
-        return len(self._conditions_sequence)
+    # def __len__(self) -> int:
+    #     return len(self._conditions_sequence)
 
     def __repr__(self) -> str:
         return (
