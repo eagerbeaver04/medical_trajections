@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class CabinetEncoder(nn.Module):
+class CabinetMLPEncoder(nn.Module):
     """
     Encodes cabinet token IDs via one-hot + MLP into d_model vector.
 
@@ -56,5 +56,28 @@ class CabinetEncoder(nn.Module):
 
         if original_shape_1d:
             out = out.squeeze(1)  # [B, d_model]
+
+        return out
+    
+
+class CabinetSimpleEncoder(nn.Module):
+    def __init__(self, num_cabinets: int, d_model: int, padding_idx: int | None = None):
+        super().__init__()
+        current_padding_idx = 0 if not padding_idx else padding_idx
+        self.embedding = nn.Embedding(num_cabinets, d_model, padding_idx=current_padding_idx)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.dim() not in (1, 2):
+            raise ValueError(f"CabinetEncoder expects [B] or [B, T], got {tuple(x.shape)}")
+
+        original_shape_1d = False
+        if x.dim() == 1:
+            x = x.unsqueeze(1)
+            original_shape_1d = True
+
+        out = self.embedding(x)
+
+        if original_shape_1d:
+            out = out.squeeze(1)
 
         return out

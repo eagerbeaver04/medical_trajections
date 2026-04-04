@@ -54,7 +54,7 @@ class MedicalSequenceDataset(Dataset):
         cls,
         generator: SequenceGenerator,
         n_sequences: int,
-        max_steps: int = 50,
+        max_steps: int = 200,
         pad_cabinet_token_id: int = 0,
         pad_to_max_length: bool = True,
         encode_condition_pad_for_model: bool = True,

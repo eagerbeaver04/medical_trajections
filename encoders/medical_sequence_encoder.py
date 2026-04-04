@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Sequence
 import torch.nn as nn
 
-from .cabinet_encoder import CabinetEncoder
+from .cabinet_encoder import CabinetSimpleEncoder, CabinetMLPEncoder
 from .condition_encoder import ConditionEncoder
 
 
@@ -25,9 +25,10 @@ class MedicalTokenEncoders(nn.Module):
             d_model=d_model,
             dropout=dropout,
         )
-        self.cabinet_encoder = CabinetEncoder(
+        self.cabinet_encoder = CabinetSimpleEncoder(
             num_cabinets=num_cabinets,
             d_model=d_model,
-            hidden_dim=cabinet_hidden_dim,
-            dropout=dropout,
+            padding_idx=0
+            # hidden_dim=cabinet_hidden_dim,
+            # dropout=dropout,
         )
