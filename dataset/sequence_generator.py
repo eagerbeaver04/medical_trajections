@@ -1,111 +1,172 @@
 import numpy as np
-from typing import Any, Optional
+from typing import Optional
 
-from structures.patient_statuses import PatientCondition, PatientConditionSchema, ConditionSpec, make_patient_condition
+from structures.patient_statuses import (
+    PatientCondition,
+    PatientConditionSchema,
+    ConditionSpec,
+    make_patient_condition,
+)
 from structures.medical_sequence import MedicalSequence
 from .condition_cabinet_relation import Relation, PatientTerminalStatus
 
-class SequenceGenerator():
-    def __init__(self, rng_seed: Optional[int] = None) -> None:
+
+class SequenceGenerator:
+    def __init__(
+        self,
+        rng_seed: Optional[int] = None,
+        n_cabinets: int = 6,
+        condition_specs: Optional[list[int]] = None,
+        transition_bias: float = 3.0,
+        self_loop_bias: float = 2.0,
+    ) -> None:
         """
         Args:
-            rng_seed: Seed для инициализации внутреннего RNG.
-                      Если None, используется случайный seed (на основе времени).
-                      Для воспроизводимости передавайте фиксированное значение.
+            rng_seed: seed RNG для воспроизводимости.
+            n_cabinets: количество кабинетов (>=1).
+            condition_specs: количество состояний по каждому condition, например [3, 2, 4].
+            transition_bias: насколько сильно каждый кабинет "тянет" к своему целевому состоянию.
+            self_loop_bias: бонус к сохранению текущего состояния.
         """
+        if n_cabinets <= 0:
+            raise ValueError("n_cabinets must be positive")
+
+        if condition_specs is None:
+            condition_specs = [3, 2, 4]
+
+        if any(n <= 1 for n in condition_specs):
+            raise ValueError("Each condition must have at least 2 states")
+
+        self._rng = np.random.default_rng(rng_seed)
 
         schema = PatientConditionSchema(
-        specs=[
-            ConditionSpec(n_states=3),
-            ConditionSpec(n_states=2),
-            ConditionSpec(n_states=4),
-        ]
+            specs=[ConditionSpec(n_states=n) for n in condition_specs]
         )
 
-        # 2 кабинета: token_id будут 2 и 3
         relation = Relation(
             schema=schema,
-            n_cabinets=2,
+            n_cabinets=n_cabinets,
             rng_seed=rng_seed,
         )
 
-        # Априорная вероятность кабинетов
-        relation.set_cabinet_prior(np.array([0.6, 0.4]))
+        self._init_cabinet_prior(relation, n_cabinets)
+        self._init_cabinet_condition_likelihood(relation, schema, n_cabinets)
+        self._init_condition_transitions(
+            relation=relation,
+            schema=schema,
+            n_cabinets=n_cabinets,
+            transition_bias=transition_bias,
+            self_loop_bias=self_loop_bias,
+        )
+        self._init_terminal_likelihoods(relation, schema)
 
-        # Вероятность кабинета по наблюдаемому состоянию condition/state
-        # condition 0
-        relation.set_cabinet_condition_likelihood(0, 0, np.array([0.8, 0.2]))
-        relation.set_cabinet_condition_likelihood(0, 1, np.array([0.5, 0.5]))
-        relation.set_cabinet_condition_likelihood(0, 2, np.array([0.2, 0.8]))
+        self._relation = relation
+        self._schema = schema
 
-        # condition 1
-        relation.set_cabinet_condition_likelihood(1, 0, np.array([0.7, 0.3]))
-        relation.set_cabinet_condition_likelihood(1, 1, np.array([0.3, 0.7]))
+    def _init_cabinet_prior(self, relation: Relation, n_cabinets: int) -> None:
+        # Случайный prior по кабинетам
+        prior = self._rng.dirichlet(np.ones(n_cabinets))
+        relation.set_cabinet_prior(prior)
 
-        # condition 2
-        relation.set_cabinet_condition_likelihood(2, 0, np.array([0.9, 0.1]))
-        relation.set_cabinet_condition_likelihood(2, 1, np.array([0.6, 0.4]))
-        relation.set_cabinet_condition_likelihood(2, 2, np.array([0.4, 0.6]))
-        relation.set_cabinet_condition_likelihood(2, 3, np.array([0.1, 0.9]))
+    def _init_cabinet_condition_likelihood(
+        self,
+        relation: Relation,
+        schema: PatientConditionSchema,
+        n_cabinets: int,
+    ) -> None:
+        # Для каждого condition/state строим распределение по кабинетам.
+        # Делается с "предпочтительным" кабинетом, чтобы кабинеты отличались.
+        for condition_idx, spec in enumerate(schema.specs):
+            n_states = spec.n_states
 
-        # Переходы состояний под действием кабинета 0 (token_id=2)
-        # condition 0 has 3 states
-        relation.set_condition_transition(0, 0, 0, np.array([0.7, 0.2, 0.1]))
-        relation.set_condition_transition(0, 0, 1, np.array([0.3, 0.5, 0.2]))
-        relation.set_condition_transition(0, 0, 2, np.array([0.2, 0.4, 0.4]))
+            for state in range(n_states):
+                alpha = np.ones(n_cabinets, dtype=float)
 
-        # condition 1 has 2 states
-        relation.set_condition_transition(0, 1, 0, np.array([0.8, 0.2]))
-        relation.set_condition_transition(0, 1, 1, np.array([0.4, 0.6]))
+                if n_cabinets == 1:
+                    preferred_cabinet = 0
+                elif n_states == 1:
+                    preferred_cabinet = 0
+                else:
+                    preferred_cabinet = int(
+                        round(state * (n_cabinets - 1) / (n_states - 1))
+                    )
 
-        # condition 2 has 4 states
-        relation.set_condition_transition(0, 2, 0, np.array([0.6, 0.3, 0.1, 0.0]))
-        relation.set_condition_transition(0, 2, 1, np.array([0.2, 0.5, 0.2, 0.1]))
-        relation.set_condition_transition(0, 2, 2, np.array([0.1, 0.3, 0.4, 0.2]))
-        relation.set_condition_transition(0, 2, 3, np.array([0.0, 0.2, 0.3, 0.5]))
+                alpha[preferred_cabinet] += 3.0
+                weights = self._rng.dirichlet(alpha)
+                relation.set_cabinet_condition_likelihood(
+                    condition_idx=condition_idx,
+                    state=state,
+                    weights_for_cabinets=weights,
+                )
 
-        # Переходы состояний под действием кабинета 1 (token_id=3)
-        relation.set_condition_transition(1, 0, 0, np.array([0.4, 0.4, 0.2]))
-        relation.set_condition_transition(1, 0, 1, np.array([0.2, 0.5, 0.3]))
-        relation.set_condition_transition(1, 0, 2, np.array([0.1, 0.3, 0.6]))
+    def _init_condition_transitions(
+        self,
+        relation: Relation,
+        schema: PatientConditionSchema,
+        n_cabinets: int,
+        transition_bias: float,
+        self_loop_bias: float,
+    ) -> None:
+        # Генерируем P(next_state | cabinet, condition, old_state)
+        # с bias к "целевому" состоянию для каждого кабинета + bias к self-loop.
+        for cabinet_idx in range(n_cabinets):
+            for condition_idx, spec in enumerate(schema.specs):
+                n_states = spec.n_states
 
-        relation.set_condition_transition(1, 1, 0, np.array([0.5, 0.5]))
-        relation.set_condition_transition(1, 1, 1, np.array([0.2, 0.8]))
+                if n_cabinets == 1:
+                    target_state = n_states // 2
+                else:
+                    target_state = int(
+                        round(cabinet_idx * (n_states - 1) / (n_cabinets - 1))
+                    )
 
-        relation.set_condition_transition(1, 2, 0, np.array([0.3, 0.3, 0.3, 0.1]))
-        relation.set_condition_transition(1, 2, 1, np.array([0.1, 0.4, 0.3, 0.2]))
-        relation.set_condition_transition(1, 2, 2, np.array([0.0, 0.2, 0.5, 0.3]))
-        relation.set_condition_transition(1, 2, 3, np.array([0.0, 0.1, 0.3, 0.6]))
+                for old_state in range(n_states):
+                    alpha = np.ones(n_states, dtype=float)
+                    alpha[target_state] += transition_bias
+                    alpha[old_state] += self_loop_bias
 
-        # Веса терминальных исходов
-        # Чем больше weight для состояния, тем сильнее вклад
-        # condition 0
-        relation.set_death_likelihood(0, np.array([0.10, 0.10, 0.20]))
-        relation.set_survival_likelihood(0, np.array([0.20, 0.10, 0.12]))
+                    probs = self._rng.dirichlet(alpha)
+                    relation.set_condition_transition(
+                        cabinet_idx=cabinet_idx,
+                        condition_idx=condition_idx,
+                        old_state=old_state,
+                        probs_to_new_states=probs,
+                    )
 
-        relation.set_death_likelihood(1, np.array([0.12, 0.15]))
-        relation.set_survival_likelihood(1, np.array([0.15, 0.05]))
+    def _init_terminal_likelihoods(
+        self,
+        relation: Relation,
+        schema: PatientConditionSchema,
+    ) -> None:
+        # Автогенерация весов terminal исходов.
+        # Логика: для каждого condition состояние "правее" слегка повышает death,
+        # "левее" — survival, плюс шум.
+        for condition_idx, spec in enumerate(schema.specs):
+            n_states = spec.n_states
 
-        relation.set_death_likelihood(2, np.array([0.10, 0.12, 0.12, 0.20]))
-        relation.set_survival_likelihood(2, np.array([0.20, 0.12, 0.08, 0.10]))
+            # Базовые тренды + шум
+            x = np.linspace(0.0, 1.0, n_states)
+            death = 0.5 + 1.5 * x + 0.2 * self._rng.random(n_states)
+            survival = 0.5 + 1.5 * (1.0 - x) + 0.2 * self._rng.random(n_states)
 
-        self._relation: Relation = relation
-        self._schema: PatientConditionSchema = schema
+            relation.set_death_likelihood(condition_idx, death)
+            relation.set_survival_likelihood(condition_idx, survival)
 
     def _generate_initial_patient_condition(self) -> PatientCondition:
+        # Старт из "средних" состояний каждого condition
+        values = [spec.n_states // 2 for spec in self._schema.specs]
         return make_patient_condition(
-        schema=self._schema,
-        values=[1, 0, 2],
-        time=0,
-    )
-    
+            schema=self._schema,
+            values=values,
+            time=0,
+        )
+
     def generate_sequence(
         self,
         max_steps: int = 50,
     ) -> tuple[MedicalSequence, PatientTerminalStatus]:
         current = self._generate_initial_patient_condition()
         sequence = MedicalSequence()
-
         sequence.append_condition(current)
 
         for _ in range(max_steps):
@@ -126,11 +187,10 @@ class SequenceGenerator():
 
             sequence.append_cabinet(cabinet)
             sequence.append_condition(next_condition)
-
             current = next_condition
 
         return sequence, PatientTerminalStatus.IN_PROGRESS
-    
+
     @property
     def schema(self) -> PatientConditionSchema:
         return self._schema
