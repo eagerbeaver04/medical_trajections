@@ -215,32 +215,33 @@ class TransformerWrapper(nn.Module):
 
     def compute_condition_loss(
         self,
-        condition_logits: list[torch.Tensor],     # list[[B, Tk, Ci]]
-        condition_targets: torch.Tensor,          # [B, Tk, F]
-        condition_mask: torch.Tensor,             # [B, Tk] bool
+        condition_logits: list[torch.Tensor],
+        condition_targets: torch.Tensor,
+        condition_mask: torch.Tensor,
     ) -> torch.Tensor:
         condition_mask = condition_mask.bool()
-        if condition_mask.sum() == 0:
-            dummy = condition_logits[0].sum() if len(condition_logits) > 0 else torch.tensor(
-                0.0, device=condition_targets.device
-            )
-            return dummy * 0.0
+        total_loss = 0.0
+        total_count = 0
 
-        losses = []
         for feature_idx, logits_i in enumerate(condition_logits):
-            # logits_i: [B, Tk, Ci]
-            targets_i = condition_targets[:, :, feature_idx]  # [B, Tk]
+            targets_i = condition_targets[:, :, feature_idx]
             B, Tk, Ci = logits_i.shape
-
+            
             loss_i = F.cross_entropy(
                 logits_i.reshape(B * Tk, Ci),
                 targets_i.reshape(B * Tk),
                 reduction="none",
             ).reshape(B, Tk)
+            
+            masked_loss = loss_i[condition_mask]  # [valid_count]
+            total_loss += masked_loss.sum()
+            total_count += masked_loss.numel()
 
-            losses.append(loss_i[condition_mask].mean())
+        if total_count == 0:
+            # Пустая маска: возвращаем нулевой тензор, связанный со всеми головами
+            return sum(logits.sum() for logits in condition_logits) * 0.0
 
-        return sum(losses) / len(losses)
+        return total_loss / total_count
 
     def compute_losses(
         self,

@@ -26,9 +26,9 @@ class MedicalTokenEncoders(nn.Module):
             dropout=dropout,
         )
         self.cabinet_encoder = CabinetSimpleEncoder(
-            num_cabinets=num_cabinets,
+            num_cabinets=num_cabinets, # Dictionary size
             d_model=d_model,
-            padding_idx=0
+            padding_idx=0,
             # hidden_dim=cabinet_hidden_dim,
             # dropout=dropout,
         )

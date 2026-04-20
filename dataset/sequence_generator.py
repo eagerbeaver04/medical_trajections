@@ -1,12 +1,18 @@
 import numpy as np
-from typing import Any
+from typing import Any, Optional
 
 from structures.patient_statuses import PatientCondition, PatientConditionSchema, ConditionSpec, make_patient_condition
 from structures.medical_sequence import MedicalSequence
 from .condition_cabinet_relation import Relation, PatientTerminalStatus
 
 class SequenceGenerator():
-    def __init__(self) -> None:
+    def __init__(self, rng_seed: Optional[int] = None) -> None:
+        """
+        Args:
+            rng_seed: Seed для инициализации внутреннего RNG.
+                      Если None, используется случайный seed (на основе времени).
+                      Для воспроизводимости передавайте фиксированное значение.
+        """
 
         schema = PatientConditionSchema(
         specs=[
@@ -20,7 +26,7 @@ class SequenceGenerator():
         relation = Relation(
             schema=schema,
             n_cabinets=2,
-            rng_seed=42,
+            rng_seed=rng_seed,
         )
 
         # Априорная вероятность кабинетов

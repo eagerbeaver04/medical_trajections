@@ -1,2 +1,2 @@
-# from condition_cabinet_relation import get_padding_conditions, PatientTerminalStatus, Relation
-# from sequence_generator import SequenceGenerator
+from .condition_cabinet_relation import get_padding_conditions, PatientTerminalStatus, Relation
+from .sequence_generator import SequenceGenerator

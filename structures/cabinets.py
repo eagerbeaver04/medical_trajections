@@ -26,7 +26,7 @@ class ICabinet(ABC):
 
 class Cabinet(ICabinet):
     def __init__(self, time: int, index: int):
-        self._time = time
+        self._time = time # TODO: for future
         self._index = index  # 2..N+1
     @property
     def key(self):

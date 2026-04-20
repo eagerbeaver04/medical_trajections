@@ -296,7 +296,9 @@ class Relation:
             )
 
         self._death_likelihood[condition_idx, :] = 0.0
-        self._death_likelihood[condition_idx, :n_states] = weights
+        self._death_likelihood[condition_idx, :n_states] = self._normalize_vector(
+            weights
+        )
 
     def set_survival_likelihood(
         self,
@@ -312,7 +314,9 @@ class Relation:
             )
 
         self._survival_likelihood[condition_idx, :] = 0.0
-        self._survival_likelihood[condition_idx, :n_states] = weights
+        self._survival_likelihood[condition_idx, :n_states] = self._normalize_vector(
+            weights
+        )
 
     def terminal_status_distribution(
         self,
@@ -376,26 +380,26 @@ class Relation:
             return PatientTerminalStatus.SURVIVED
         return PatientTerminalStatus.DEAD
 
-    def determine_terminal_status_argmax(
-        self,
-        patient_condition: PatientCondition,
-    ) -> PatientTerminalStatus:
-        distribution = self.terminal_status_distribution(patient_condition)
-        probs = np.array(
-            [
-                distribution[PatientTerminalStatus.IN_PROGRESS],
-                distribution[PatientTerminalStatus.SURVIVED],
-                distribution[PatientTerminalStatus.DEAD],
-            ],
-            dtype=float,
-        )
-        idx = int(np.argmax(probs))
+    # def determine_terminal_status_argmax(
+    #     self,
+    #     patient_condition: PatientCondition,
+    # ) -> PatientTerminalStatus:
+    #     distribution = self.terminal_status_distribution(patient_condition)
+    #     probs = np.array(
+    #         [
+    #             distribution[PatientTerminalStatus.IN_PROGRESS],
+    #             distribution[PatientTerminalStatus.SURVIVED],
+    #             distribution[PatientTerminalStatus.DEAD],
+    #         ],
+    #         dtype=float,
+    #     )
+    #     idx = int(np.argmax(probs))
 
-        if idx == 0:
-            return PatientTerminalStatus.IN_PROGRESS
-        if idx == 1:
-            return PatientTerminalStatus.SURVIVED
-        return PatientTerminalStatus.DEAD
+    #     if idx == 0:
+    #         return PatientTerminalStatus.IN_PROGRESS
+    #     if idx == 1:
+    #         return PatientTerminalStatus.SURVIVED
+    #     return PatientTerminalStatus.DEAD
 
     def from_condition_to_cabinet(self, patient_condition: PatientCondition) -> ICabinet:
         self._validate_patient_condition(patient_condition)

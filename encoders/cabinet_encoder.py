@@ -61,10 +61,9 @@ class CabinetMLPEncoder(nn.Module):
     
 
 class CabinetSimpleEncoder(nn.Module):
-    def __init__(self, num_cabinets: int, d_model: int, padding_idx: int | None = None):
+    def __init__(self, num_cabinets: int, d_model: int, padding_idx: int | None = 0):
         super().__init__()
-        current_padding_idx = 0 if not padding_idx else padding_idx
-        self.embedding = nn.Embedding(num_cabinets, d_model, padding_idx=current_padding_idx)
+        self.embedding = nn.Embedding(num_cabinets, d_model, padding_idx=padding_idx)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.dim() not in (1, 2):

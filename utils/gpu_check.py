@@ -1,23 +1,37 @@
-# GPU check
-import psutil
-import humanize
+# gpu_check.py - исправленная версия с безопасным fallback
 import os
-import GPUtil as GPU
 import torch
 
 def get_device() -> tuple[torch.device, bool]:
-    GPUs = GPU.getGPUs()
-    # XXX: only one GPU on Colab and isn’t guaranteed
-    gpu = GPUs[0] if GPUs else None
+    cuda_available = torch.cuda.is_available()
+    device = torch.device("cuda" if cuda_available else "cpu")
 
-    def printm():
+    try:
+        import psutil
+        import humanize
         process = psutil.Process(os.getpid())
-        print("Gen RAM Free: " + humanize.naturalsize( psutil.virtual_memory().available ), " | Proc size: " + humanize.naturalsize( process.memory_info().rss))
-        if gpu:
-            print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
+        ram_free = humanize.naturalsize(psutil.virtual_memory().available)
+        proc_size = humanize.naturalsize(process.memory_info().rss)
+        print(f"Gen RAM Free: {ram_free} | Proc size: {proc_size}")
+    except ImportError:
+        print("(psutil/humanize not installed, skipping RAM info)")
+    except Exception as e:
+        print(f"(Failed to get RAM info: {e})")
 
-    printm()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    try:
+        import GPUtil as GPU
+        gpus = GPU.getGPUs()
+        if gpus:
+            gpu = gpus[0]
+            print(f"GPU RAM Free: {gpu.memoryFree:.0f}MB | Used: {gpu.memoryUsed:.0f}MB | "
+                  f"Util {gpu.memoryUtil*100:3.0f}% | Total {gpu.memoryTotal:.0f}MB")
+        else:
+            print("No GPUs found by GPUtil")
+    except ImportError:
+        print("GPUtil not installed, skipping GPU stats")
+    except Exception as e:
+        print(f"GPUtil error: {e}")
+
     print("Using device:", device)
-    return device, torch.cuda.is_available()
+    return device, cuda_available

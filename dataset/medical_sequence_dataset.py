@@ -171,7 +171,7 @@ class MedicalSequenceDataset(Dataset):
 
         out = list(conditions)
         while len(out) < target_len:
-            out.append(get_padding_conditions(schema=self._condition_schema, time=0))
+            out.append(get_padding_conditions(schema=self._condition_schema, time=0)) #TODO:  replace time = 0 to positive value with increasing time in each next block
         return out
 
     def _pad_cabinets(
@@ -216,6 +216,7 @@ class MedicalSequenceDataset(Dataset):
                 if self._encode_condition_pad_for_model:
                     mapped_value = self._condition_number_to_model_id(feature_idx, value)
                 else:
+                    assert False #TODO:  Если не кодировать PAD, в тензор попадают значения -1 (PatientConditionSchema.PAD)
                     mapped_value = value
                 row.append(mapped_value)
 
